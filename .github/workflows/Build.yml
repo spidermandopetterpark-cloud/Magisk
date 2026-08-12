@@ -22,46 +22,50 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Instalar Gradle
+      - name: Instalar Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Verificar projeto
-        shell: bash
+      - name: Verificar ambiente
         run: |
-          echo "Java:"
           java -version
-
-          echo "Gradle:"
           gradle --version
 
-          echo "Estrutura:"
-          find . -maxdepth 3 -type f \
-            \( -name "build.gradle" \
-            -o -name "build.gradle.kts" \
-            -o -name "settings.gradle" \
-            -o -name "settings.gradle.kts" \) \
-            -print
+      - name: Verificar projeto
+        working-directory: app
+        run: |
+          echo "Diretório:"
+          pwd
 
-      - name: Limpar
+          echo "Arquivos:"
+          ls -la
+
+          echo "Settings:"
+          ls -l settings.gradle.kts
+
+          echo "Build:"
+          ls -l build.gradle.kts
+
+      - name: Limpar projeto
+        working-directory: app
         run: |
           gradle clean --stacktrace
 
       - name: Gerar APK Debug
+        working-directory: app
         run: |
           gradle assembleDebug --stacktrace --info
 
-      - name: Procurar APK
-        shell: bash
+      - name: Localizar APK
         run: |
-          echo "APKs encontrados:"
-          find . -type f -name "*.apk" -print
+          echo "=== APKs encontrados ==="
+          find app -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: Magisk-APK
           path: |
-            **/build/outputs/apk/**/*.apk
+            app/**/build/outputs/apk/**/*.apk
           if-no-files-found: error
