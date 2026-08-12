@@ -1,21 +1,35 @@
-name: Detect Gradle Wrapper
+name: Android APK Build
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  detect-gradle-wrapper:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detectar gradle-wrapper.jar
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Detectar projeto Gradle
         shell: bash
         run: |
-          echo "Procurando gradle-wrapper.jar..."
+          echo "=== Estrutura do projeto ==="
+          find . -maxdepth 4 -type f | sort | head -300
+
+          echo ""
+          echo "=== Procurando gradle-wrapper.jar ==="
 
           FILE=$(find . -type f -name "gradle-wrapper.jar" -print -quit)
 
@@ -23,31 +37,60 @@ jobs:
             echo "✅ gradle-wrapper.jar encontrado:"
             echo "$FILE"
 
-            echo "Tamanho:"
             ls -lh "$FILE"
-
-            echo "SHA256:"
             sha256sum "$FILE"
 
             echo "GRADLE_WRAPPER_JAR=$FILE" >> "$GITHUB_ENV"
           else
-            echo "❌ gradle-wrapper.jar não encontrado."
-            exit 1
+            echo "⚠️ gradle-wrapper.jar não encontrado."
           fi
 
       - name: Verificar Gradle Wrapper
+        shell: bash
         run: |
-          echo "Arquivo detectado: $GRADLE_WRAPPER_JAR"
-
           if [ -f "./gradlew" ]; then
             echo "✅ gradlew encontrado"
+            chmod +x ./gradlew
           else
-            echo "⚠️ gradlew não encontrado"
+            echo "❌ gradlew não encontrado"
+            exit 1
           fi
 
           if [ -f "./gradle/wrapper/gradle-wrapper.properties" ]; then
             echo "✅ gradle-wrapper.properties encontrado"
             cat ./gradle/wrapper/gradle-wrapper.properties
           else
-            echo "⚠️ gradle-wrapper.properties não encontrado"
+            echo "❌ gradle-wrapper.properties não encontrado"
+            exit 1
           fi
+
+          if [ -f "./gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "✅ gradle-wrapper.jar encontrado no local padrão"
+            ls -lh ./gradle/wrapper/gradle-wrapper.jar
+          else
+            echo "❌ gradle-wrapper.jar não encontrado no local padrão"
+            exit 1
+          fi
+
+      - name: Limpar projeto
+        run: |
+          ./gradlew clean --no-daemon
+
+      - name: Gerar APK Debug
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Procurar APK
+        shell: bash
+        run: |
+          echo "=== APKs gerados ==="
+          find . -type f -name "*.apk" -print
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: |
+            **/build/outputs/apk/**/*.apk
+            **/build/outputs/apk/*.apk
+          if-no-files-found: error
