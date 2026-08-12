@@ -15,8 +15,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Configurar Java 17
+      - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,32 +29,60 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Verificar Gradle
+      - name: Ver informações
         run: |
+          echo "=== Java ==="
+          java -version
+
+          echo ""
+          echo "=== Gradle ==="
           gradle --version
 
-      - name: Detectar projeto Android
-        run: |
-          echo "=== Arquivos Gradle ==="
-          find . -maxdepth 4 \
-            \( -name "build.gradle" -o -name "build.gradle.kts" -o -name "settings.gradle" -o -name "settings.gradle.kts" \) \
+          echo ""
+          echo "=== Estrutura ==="
+          find . -maxdepth 3 -type f \
+            \( -name "build.gradle" \
+            -o -name "build.gradle.kts" \
+            -o -name "settings.gradle" \
+            -o -name "settings.gradle.kts" \) \
             -print
 
-      - name: Gerar APK Debug
+      - name: Listar tarefas Gradle
         run: |
+          gradle tasks --all --no-daemon --stacktrace
+
+      - name: Compilar APK
+        shell: bash
+        run: |
+          set +e
+
+          echo "=== INICIANDO BUILD ==="
+
           gradle assembleDebug \
             --no-daemon \
-            --stacktrace
+            --stacktrace \
+            --info
 
-      - name: Procurar APK
-        run: |
-          echo "=== APK GERADO ==="
+          EXIT_CODE=$?
+
+          echo ""
+          echo "=== APKs ENCONTRADOS ==="
           find . -type f -name "*.apk" -print
 
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo ""
+            echo "======================================"
+            echo "BUILD FALHOU"
+            echo "======================================"
+
+            exit "$EXIT_CODE"
+          fi
+
       - name: Publicar APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: magisk-apk
           path: |
             **/build/outputs/apk/**/*.apk
             **/build/outputs/apk/*.apk
