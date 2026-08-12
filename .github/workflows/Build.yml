@@ -16,65 +16,73 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Java 17
+      - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
-      - name: Mostrar configuração do projeto
-        working-directory: app
-        run: |
-          echo "=== settings.gradle.kts ==="
-          cat settings.gradle.kts || true
-
-          echo "=== build.gradle.kts ==="
-          cat build.gradle.kts || true
-
-          echo "=== build-logic ==="
-          find build-logic -maxdepth 3 -type f \
-            \( -name "*.gradle.kts" -o -name "*.kt" \) \
-            -print || true
-
-      - name: Instalar Gradle
+      - name: Instalar Gradle mais recente
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '9.1.0'
 
-      - name: Verificar Gradle
+      - name: Verificar ambiente
         run: |
+          echo "=== JAVA ==="
           java -version
+
+          echo "=== GRADLE ==="
           gradle --version
 
-      - name: Gerar APK
+          echo "=== ESTRUTURA ==="
+          find app -maxdepth 3 -type f \
+            \( -name "settings.gradle*" \
+            -o -name "build.gradle*" \
+            -o -name "gradle.properties" \) \
+            -print
+
+      - name: Verificar projeto Gradle
+        working-directory: app
+        run: |
+          if [ ! -f "settings.gradle.kts" ] && \
+             [ ! -f "settings.gradle" ]; then
+            echo "ERRO: settings.gradle(.kts) não encontrado em app/"
+            exit 1
+          fi
+
+          echo "Projeto Gradle encontrado."
+
+      - name: Gerar APK Debug
         working-directory: app
         run: |
           gradle :apk:assembleDebug \
             --no-daemon \
+            --no-configuration-cache \
             --stacktrace
 
-      - name: Encontrar APK
+      - name: Localizar APK
         run: |
-          echo "Procurando APK..."
+          echo "=== APKs GERADOS ==="
 
           find app -type f -name "*.apk" -print
 
           APK=$(find app -type f -name "*.apk" | head -n 1)
 
           if [ -z "$APK" ]; then
-            echo "Nenhum APK encontrado."
+            echo "ERRO: nenhum APK foi gerado."
             exit 1
           fi
 
-          echo "APK encontrado:"
-          echo "$APK"
+          echo "APK encontrado: $APK"
 
           mkdir -p output
-          cp "$APK" output/Magisk.apk
+          cp "$APK" output/Magisk-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Magisk-APK
-          path: output/Magisk.apk
+          name: Magisk-debug
+          path: output/Magisk-debug.apk
           if-no-files-found: error
