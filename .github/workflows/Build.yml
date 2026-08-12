@@ -16,77 +16,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Java 17
+      - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Detectar projeto Gradle
-        shell: bash
+      - name: Instalar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Verificar Gradle
         run: |
-          echo "=== Estrutura do projeto ==="
-          find . -maxdepth 4 -type f | sort | head -300
+          gradle --version
 
-          echo ""
-          echo "=== Procurando gradle-wrapper.jar ==="
-
-          FILE=$(find . -type f -name "gradle-wrapper.jar" -print -quit)
-
-          if [ -n "$FILE" ]; then
-            echo "✅ gradle-wrapper.jar encontrado:"
-            echo "$FILE"
-
-            ls -lh "$FILE"
-            sha256sum "$FILE"
-
-            echo "GRADLE_WRAPPER_JAR=$FILE" >> "$GITHUB_ENV"
-          else
-            echo "⚠️ gradle-wrapper.jar não encontrado."
-          fi
-
-      - name: Verificar Gradle Wrapper
-        shell: bash
+      - name: Detectar projeto Android
         run: |
-          if [ -f "./gradlew" ]; then
-            echo "✅ gradlew encontrado"
-            chmod +x ./gradlew
-          else
-            echo "❌ gradlew não encontrado"
-            exit 1
-          fi
-
-          if [ -f "./gradle/wrapper/gradle-wrapper.properties" ]; then
-            echo "✅ gradle-wrapper.properties encontrado"
-            cat ./gradle/wrapper/gradle-wrapper.properties
-          else
-            echo "❌ gradle-wrapper.properties não encontrado"
-            exit 1
-          fi
-
-          if [ -f "./gradle/wrapper/gradle-wrapper.jar" ]; then
-            echo "✅ gradle-wrapper.jar encontrado no local padrão"
-            ls -lh ./gradle/wrapper/gradle-wrapper.jar
-          else
-            echo "❌ gradle-wrapper.jar não encontrado no local padrão"
-            exit 1
-          fi
-
-      - name: Limpar projeto
-        run: |
-          ./gradlew clean --no-daemon
+          echo "=== Arquivos Gradle ==="
+          find . -maxdepth 4 \
+            \( -name "build.gradle" -o -name "build.gradle.kts" -o -name "settings.gradle" -o -name "settings.gradle.kts" \) \
+            -print
 
       - name: Gerar APK Debug
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          gradle assembleDebug \
+            --no-daemon \
+            --stacktrace
 
       - name: Procurar APK
-        shell: bash
         run: |
-          echo "=== APKs gerados ==="
+          echo "=== APK GERADO ==="
           find . -type f -name "*.apk" -print
 
-      - name: Upload APK
+      - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
