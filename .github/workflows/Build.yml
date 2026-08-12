@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  apk:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,51 +22,59 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Gradle
+      - name: Mostrar configuração do projeto
+        working-directory: app
+        run: |
+          echo "=== settings.gradle.kts ==="
+          cat settings.gradle.kts || true
+
+          echo "=== build.gradle.kts ==="
+          cat build.gradle.kts || true
+
+          echo "=== build-logic ==="
+          find build-logic -maxdepth 3 -type f \
+            \( -name "*.gradle.kts" -o -name "*.kt" \) \
+            -print || true
+
+      - name: Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Build APK
-        working-directory: app
-        shell: bash
+      - name: Verificar Gradle
         run: |
-          set -e
-
-          echo "=== Ambiente ==="
           java -version
           gradle --version
 
-          echo "=== Projeto ==="
-          pwd
-          ls -la
-
-          echo "=== Gerando APK ==="
-
+      - name: Gerar APK
+        working-directory: app
+        run: |
           gradle :apk:assembleDebug \
             --no-daemon \
-            --stacktrace \
-            --warning-mode all
+            --stacktrace
 
       - name: Encontrar APK
-        shell: bash
         run: |
-          echo "=== APK GERADO ==="
+          echo "Procurando APK..."
 
           find app -type f -name "*.apk" -print
 
           APK=$(find app -type f -name "*.apk" | head -n 1)
 
           if [ -z "$APK" ]; then
-            echo "ERRO: nenhum APK foi gerado."
+            echo "Nenhum APK encontrado."
             exit 1
           fi
 
-          echo "APK: $APK"
+          echo "APK encontrado:"
+          echo "$APK"
 
-      - name: Publicar APK
+          mkdir -p output
+          cp "$APK" output/Magisk.apk
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Magisk-APK
-          path: app/**/*.apk
+          path: output/Magisk.apk
           if-no-files-found: error
