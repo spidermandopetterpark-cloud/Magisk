@@ -23,38 +23,32 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Instalar Gradle mais recente
+      - name: Instalar Gradle 9.5.0
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.1.0'
+          gradle-version: '9.5.0'
 
-      - name: Verificar ambiente
+      - name: Verificar versões
         run: |
-          echo "=== JAVA ==="
+          echo "=== Java ==="
           java -version
 
-          echo "=== GRADLE ==="
+          echo "=== Gradle ==="
           gradle --version
 
-          echo "=== ESTRUTURA ==="
-          find app -maxdepth 3 -type f \
-            \( -name "settings.gradle*" \
-            -o -name "build.gradle*" \
-            -o -name "gradle.properties" \) \
-            -print
-
-      - name: Verificar projeto Gradle
+      - name: Verificar projeto
         working-directory: app
         run: |
-          if [ ! -f "settings.gradle.kts" ] && \
-             [ ! -f "settings.gradle" ]; then
-            echo "ERRO: settings.gradle(.kts) não encontrado em app/"
-            exit 1
-          fi
+          echo "=== Arquivos Gradle ==="
 
-          echo "Projeto Gradle encontrado."
+          find . -maxdepth 4 -type f \
+            \( -name "settings.gradle" \
+            -o -name "settings.gradle.kts" \
+            -o -name "build.gradle" \
+            -o -name "build.gradle.kts" \) \
+            -print
 
-      - name: Gerar APK Debug
+      - name: Gerar APK
         working-directory: app
         run: |
           gradle :apk:assembleDebug \
@@ -62,23 +56,24 @@ jobs:
             --no-configuration-cache \
             --stacktrace
 
-      - name: Localizar APK
+      - name: Encontrar APK
         run: |
-          echo "=== APKs GERADOS ==="
+          echo "=== APK GERADO ==="
 
           find app -type f -name "*.apk" -print
 
           APK=$(find app -type f -name "*.apk" | head -n 1)
 
           if [ -z "$APK" ]; then
-            echo "ERRO: nenhum APK foi gerado."
+            echo "ERRO: APK não encontrado."
             exit 1
           fi
 
-          echo "APK encontrado: $APK"
-
           mkdir -p output
           cp "$APK" output/Magisk-debug.apk
+
+          echo "APK:"
+          ls -lh output/Magisk-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
