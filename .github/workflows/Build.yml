@@ -17,38 +17,60 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configurar Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
-      - name: Instalar Gradle 9.5.0
+      - name: Instalar dependências
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 \
+            python3-pip \
+            build-essential \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            zip \
+            unzip
+
+      - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.0'
 
-      - name: Verificar versões
+      - name: Verificar ambiente
         run: |
-          echo "=== Java ==="
+          echo "=== JAVA ==="
           java -version
 
-          echo "=== Gradle ==="
+          echo "=== GRADLE ==="
           gradle --version
 
-      - name: Verificar projeto
-        working-directory: app
+          echo "=== PYTHON ==="
+          python3 --version
+
+      - name: Verificar build.py
         run: |
-          echo "=== Arquivos Gradle ==="
+          if [ ! -f "./build.py" ]; then
+            echo "ERRO: build.py não encontrado."
+            find . -maxdepth 3 -name "build.py" -print
+            exit 1
+          fi
 
-          find . -maxdepth 4 -type f \
-            \( -name "settings.gradle" \
-            -o -name "settings.gradle.kts" \
-            -o -name "build.gradle" \
-            -o -name "build.gradle.kts" \) \
-            -print
+          chmod +x ./build.py
 
-      - name: Gerar APK
+          echo "build.py encontrado:"
+          ls -lh ./build.py
+
+      - name: Compilar binários nativos
+        run: |
+          echo "=== BUILD BINARIES ==="
+          ./build.py binary
+
+      - name: Gerar APK Debug
         working-directory: app
         run: |
           gradle :apk:assembleDebug \
@@ -56,24 +78,24 @@ jobs:
             --no-configuration-cache \
             --stacktrace
 
-      - name: Encontrar APK
+      - name: Localizar APK
         run: |
-          echo "=== APK GERADO ==="
+          echo "=== APKs ==="
 
           find app -type f -name "*.apk" -print
 
           APK=$(find app -type f -name "*.apk" | head -n 1)
 
           if [ -z "$APK" ]; then
-            echo "ERRO: APK não encontrado."
+            echo "ERRO: nenhum APK foi gerado."
             exit 1
           fi
 
+          echo "APK encontrado:"
+          echo "$APK"
+
           mkdir -p output
           cp "$APK" output/Magisk-debug.apk
-
-          echo "APK:"
-          ls -lh output/Magisk-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
