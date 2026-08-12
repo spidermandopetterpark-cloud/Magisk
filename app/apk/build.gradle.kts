@@ -39,16 +39,31 @@ android {
 
 dependencies {
     implementation(project(":core"))
+
     coreLibraryDesugaring(libs.jdk.libs)
 
+    // ==========================================
+    // Shizuku API
+    // ==========================================
+    implementation("dev.rikka.shizuku:api:13.1.5")
+
+    // ==========================================
+    // Rikka
+    // ==========================================
     implementation(libs.indeterminate.checkbox)
     implementation(libs.rikka.layoutinflater)
     implementation(libs.rikka.insets)
     implementation(libs.rikka.recyclerview)
 
+    // ==========================================
+    // Navigation
+    // ==========================================
     implementation(libs.navigation.fragment.ktx)
     implementation(libs.navigation.ui.ktx)
 
+    // ==========================================
+    // AndroidX / UI
+    // ==========================================
     implementation(libs.constraintlayout)
     implementation(libs.swiperefreshlayout)
     implementation(libs.recyclerview)
