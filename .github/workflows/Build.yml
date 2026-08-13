@@ -49,6 +49,11 @@ jobs:
             bzip2 \
             file
 
+      - name: Fix Gradle permissions
+        run: |
+          chmod +x gradlew
+          git update-index --chmod=+x gradlew
+
       - name: Prepare submodules
         run: |
           git submodule sync --recursive
@@ -58,13 +63,13 @@ jobs:
         run: |
           python3 --version
           java -version
-          ./gradlew --version
+          bash ./gradlew --version
 
       - name: Setup Magisk NDK
         run: |
           python3 build.py ndk
 
-      - name: Build
+      - name: Build Magisk
         run: |
           python3 build.py -r app
 
@@ -94,7 +99,7 @@ jobs:
           path: "**/*.zip"
           if-no-files-found: warn
 
-      - name: Upload build logs
+      - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
