@@ -19,24 +19,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify Cargo
-        run: |
-          set -e
-
-          echo "=== CARGO FILES ==="
-          test -f native/src/Cargo.toml
-          test -f native/src/base/Cargo.toml
-
-          echo "=== BASE CARGO ==="
-          cat native/src/base/Cargo.toml
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -44,21 +30,8 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup NDK
-        run: |
-          set -e
-          echo "=== INSTALL NDK ==="
-          python3 build.py ndk
-
-      - name: Build Native
-        run: |
-          set -e
-          echo "=== BUILD NATIVE ==="
-          python3 build.py -r native
-
       - name: Build APK
         run: |
-          set -e
           echo "=== BUILD APK ==="
           python3 build.py -r app
 
