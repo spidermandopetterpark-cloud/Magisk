@@ -1,40 +1,110 @@
-name: Build APK
+name: Build Magisk APK
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - master
 
 permissions:
   contents: read
 
 jobs:
-  apk:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            lld \
+            cmake \
+            ninja-build \
+            make \
+            pkg-config \
+            libssl-dev \
+            zip \
+            unzip \
+            xz-utils \
+            bzip2 \
+            file \
+            git
+
+      - name: Prepare repository
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Show environment
+        run: |
+          echo "=== ENVIRONMENT ==="
+          java -version
+          python3 --version
+          cmake --version
+          ninja --version
+          clang --version
+
+      - name: Setup Magisk NDK
+        run: |
+          echo "=== SETUP NDK ==="
+          python3 build.py ndk
+
+      - name: Build native components
+        run: |
+          echo "=== BUILD NATIVE ==="
+          python3 build.py native
 
       - name: Build APK
         run: |
           echo "=== BUILD APK ==="
           python3 build.py -r app
 
+      - name: Show generated files
+        if: always()
+        run: |
+          echo "=== GENERATED FILES ==="
+          find . -type f \( \
+            -name "*.apk" -o \
+            -name "*.zip" \
+            \) -print
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: magisk-apk
+          path: |
+            **/*.apk
+          if-no-files-found: error
+
+      - name: Upload Magisk ZIP
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: magisk-zip
+          path: |
+            **/*.zip
+          if-no-files-found: warn
       - name: Show output
         run: |
           echo "=== OUTPUT ==="
