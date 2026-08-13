@@ -52,18 +52,11 @@ jobs:
       - name: Fix Gradle permissions
         run: |
           chmod +x gradlew
-          git update-index --chmod=+x gradlew
 
       - name: Prepare submodules
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
-
-      - name: Check environment
-        run: |
-          python3 --version
-          java -version
-          bash ./gradlew --version
 
       - name: Setup Magisk NDK
         run: |
