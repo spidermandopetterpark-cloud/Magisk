@@ -14,10 +14,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Verify Cargo
+        run: |
+          set -e
+
+          echo "=== CARGO FILES ==="
+          test -f native/src/Cargo.toml
+          test -f native/src/base/Cargo.toml
+
+          echo "=== BASE CARGO ==="
+          cat native/src/base/Cargo.toml
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -26,8 +37,6 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -35,35 +44,21 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Prepare cxx-rs
-        run: |
-          echo "=== PREPARING CXX-RS ==="
-
-          mkdir -p native/src/external
-
-          rm -rf native/src/external/cxx-rs
-
-          git clone --depth 1 \
-            https://github.com/dtolnay/cxx.git \
-            native/src/external/cxx-rs
-
-          test -f native/src/external/cxx-rs/Cargo.toml
-
-          echo "=== CXX-RS OK ==="
-          ls -la native/src/external/cxx-rs
-
       - name: Setup NDK
         run: |
-          echo "=== SETUP NDK ==="
+          set -e
+          echo "=== INSTALL NDK ==="
           python3 build.py ndk
 
-      - name: Build native
+      - name: Build Native
         run: |
+          set -e
           echo "=== BUILD NATIVE ==="
           python3 build.py -r native
 
       - name: Build APK
         run: |
+          set -e
           echo "=== BUILD APK ==="
           python3 build.py -r app
 
