@@ -1,4 +1,4 @@
-name: Build Magisk APK
+name: Build Magisk
 
 on:
   workflow_dispatch:
@@ -17,8 +17,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
+          submodules: recursive
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -32,7 +32,7 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -47,72 +47,59 @@ jobs:
             unzip \
             xz-utils \
             bzip2 \
-            file \
-            git
+            file
 
-      - name: Prepare repository
+      - name: Prepare submodules
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
 
-      - name: Show environment
+      - name: Check environment
         run: |
-          echo "=== ENVIRONMENT ==="
-          java -version
           python3 --version
-          cmake --version
-          ninja --version
-          clang --version
+          java -version
+          ./gradlew --version
 
       - name: Setup Magisk NDK
         run: |
-          echo "=== SETUP NDK ==="
           python3 build.py ndk
 
-      - name: Build native components
+      - name: Build
         run: |
-          echo "=== BUILD NATIVE ==="
-          python3 build.py native
-
-      - name: Build APK
-        run: |
-          echo "=== BUILD APK ==="
           python3 build.py -r app
 
-      - name: Show generated files
+      - name: Find APK
         if: always()
         run: |
-          echo "=== GENERATED FILES ==="
-          find . -type f \( \
-            -name "*.apk" -o \
-            -name "*.zip" \
-            \) -print
+          find . -type f -name "*.apk" -print || true
 
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: magisk-apk
-          path: |
-            **/*.apk
-          if-no-files-found: error
-
-      - name: Upload Magisk ZIP
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: magisk-zip
-          path: |
-            **/*.zip
-          if-no-files-found: warn
-      - name: Show output
+      - name: Find ZIP
+        if: always()
         run: |
-          echo "=== OUTPUT ==="
-          find out -maxdepth 2 -type f -print
+          find . -type f -name "*.zip" -print || true
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: magisk-apk
-          path: out/*.apk
+          name: Magisk-APK
+          path: "**/*.apk"
           if-no-files-found: error
+
+      - name: Upload ZIP
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Magisk-ZIP
+          path: "**/*.zip"
+          if-no-files-found: warn
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            **/*.log
+            **/build/reports/**
+          if-no-files-found: warn
