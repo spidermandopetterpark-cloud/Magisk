@@ -49,9 +49,10 @@ jobs:
             bzip2 \
             file
 
-      - name: Fix Gradle permissions
+      - name: Fix permissions
         run: |
           chmod +x gradlew
+          find native -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
 
       - name: Prepare submodules
         run: |
@@ -62,6 +63,13 @@ jobs:
         run: |
           python3 build.py ndk
 
+      - name: Debug JNI task
+        run: |
+          bash ./gradlew :core:syncReleaseJniLibs \
+            --stacktrace \
+            --info \
+            --no-daemon
+
       - name: Build Magisk
         run: |
           python3 build.py -r app
@@ -71,11 +79,6 @@ jobs:
         run: |
           find . -type f -name "*.apk" -print || true
 
-      - name: Find ZIP
-        if: always()
-        run: |
-          find . -type f -name "*.zip" -print || true
-
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
@@ -83,14 +86,6 @@ jobs:
           name: Magisk-APK
           path: "**/*.apk"
           if-no-files-found: error
-
-      - name: Upload ZIP
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Magisk-ZIP
-          path: "**/*.zip"
-          if-no-files-found: warn
 
       - name: Upload logs
         if: failure()
